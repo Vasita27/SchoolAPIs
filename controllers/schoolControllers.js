@@ -15,16 +15,33 @@ const getDistance = (lat1, lon1, lat2, lon2) => {
 
 exports.addSchool = (req, res) => {
   const { name, address, latitude, longitude } = req.body;
+
   if (!name || !address || isNaN(latitude) || isNaN(longitude)) {
     return res.status(400).json({ message: 'Invalid input' });
   }
 
-  const query = 'INSERT INTO schools (name, address, latitude, longitude) VALUES (?, ?, ?, ?)';
-  db.query(query, [name, address, latitude, longitude], (err) => {
-    if (err) return res.status(500).json({ error: err.message });
-    res.status(201).json({ message: 'School added successfully' });
+  // Check if the school already exists
+  const checkQuery = 'SELECT * FROM schools WHERE name = ? AND address = ?';
+  db.query(checkQuery, [name, address], (checkErr, results) => {
+    if (checkErr) {
+      return res.status(500).json({ error: checkErr.message });
+    }
+
+    if (results.length > 0) {
+      return res.status(409).json({ message: 'School already exists' }); // 409 Conflict
+    }
+
+    // Insert the new school
+    const insertQuery = 'INSERT INTO schools (name, address, latitude, longitude) VALUES (?, ?, ?, ?)';
+    db.query(insertQuery, [name, address, latitude, longitude], (insertErr) => {
+      if (insertErr) {
+        return res.status(500).json({ error: insertErr.message });
+      }
+      res.status(201).json({ message: 'School added successfully' });
+    });
   });
 };
+
 
 exports.listSchools = (req, res) => {
   const userLat = parseFloat(req.query.latitude);
